@@ -218,7 +218,7 @@ void initOpenGLProgram(GLFWwindow* window) {
 	glfwSetKeyCallback(window,keyCallback);
 
 	sp=new ShaderProgram("v_simplest.glsl",NULL,"f_simplest.glsl");
-	tex0 = readTexture("metal.png");
+	tex0 = readTexture("metal3.png");
 	tex1 = readTexture("sky.png");
 	tex2 = readTexture("wood_jpg.png");
 }
@@ -261,51 +261,7 @@ void zebatka(glm::mat4 M, float angle, float x, float y, float z, float angleDel
 		drawcube(Mk, mycube);
 	}
 }
-
-void glowna_zebatka(glm::mat4 M, float angle, float x, float y, float z, float angleDelta, float a, float b, float c, float zw, float w)
-//angle nie ruszac, x y z(0,0,0) - przesuniecie zebatki, angle delta(0) - rotate kostek wokol torusa, a b c(1,1,1) - skalowanie torusa,
-// zw w(0.9,0.3) - promien zewnetrzny i wewnetrzny torusa, prawolewo 
-// w nawiasach defaultowe wartosci zeby mialo sens na poczatku i potem mozna zmieniac
-{
-	Models::Torus mytorus(zw, w, 36, 36);
-	//glm::mat4 I = glm::mat4(1.0f);
-	glm::mat4 Mt1 = glm::translate(M, glm::vec3(x, y, z)); //Macierz torusa to najpierw przesunięcie do odpowiedniej pozycji... + Relatywnie do macierzy M żeby się rotowało wokół osi x i y
-	Mt1 = glm::rotate(Mt1, 0.8f * angle, glm::vec3(0.0f, 0.0f, 1.0f)); //... potem obrót żeby nasz "tryb" był odpowiednio obrócony
-	Mt1 = glm::scale(Mt1, glm::vec3(a, b, c));
-	drawtorus(Mt1, mytorus);
-
-	//W pętli narysuj 12 kostek.
-	for (int k = 0; k < 12; k++) {
-		//Macierz kostki to obrót, żeby wybrać kierunek wokół torusa...
-		glm::mat4 Mk = glm::rotate(Mt1, glm::radians(k * 30.0f + angleDelta), glm::vec3(0.0f, 0.0f, 1.0f));
-		//...przesunięcie żeby dotrzeć na obrzeże torusa...
-		Mk = glm::translate(Mk, glm::vec3(zw + w, 0.0f, 0.0f));
-		//...i skalowanie żeby pomniejszyć kostkę do porządanych rozmiarów
-		Mk = glm::scale(Mk, glm::vec3(0.1f, 0.1f, 0.1f));
-		Models::Cube mycube;
-		drawcube(Mk, mycube);
-	}
-	//wnetrze zebatki
-	for (int k = 0; k < 3; k++) {
-		glm::mat4 Mk = glm::rotate(Mt1, glm::radians(k * 120.0f + angleDelta), glm::vec3(0.0f, 0.0f, 1.0f));
-		Mk = glm::translate(Mk, glm::vec3(zw / 2, 0.0f, 0.0f));
-		Mk = glm::scale(Mk, glm::vec3(zw / 2, 0.1f, 0.1f));
-		Models::Cube mycube;
-		drawcube(Mk, mycube);
-	}
-	//kijek od zebatki
-	glm::mat4 Mk = glm::translate(Mt1, glm::vec3(0.0f, 0.0f, -0.3f));
-	Mk = glm::scale(Mk, glm::vec3(0.2f, 0.2f, 0.6f));
-	Models::Cube mycube;
-	drawcube(Mk, mycube);
-	// krótsza wskazówka zegara
-	glm::mat4 Mk2 = glm::translate(Mt1, glm::vec3(0.0f, 0.8f, -0.5f));
-	Mk2 = glm::scale(Mk2, glm::vec3(0.15f, 2.2f, 0.15f));
-	Models::Cube mycube1;
-	draw_wood_cube(Mk2, mycube1);
-}
-
-void zebatka_inner(glm::mat4 Mt1, float angleDelta, float zw, float w)
+void zebatka_inner(glm::mat4 Mt1, float angleDelta, float zw, float w, float a, float b, float c)
 {
 	Models::Torus mytorus(zw, w, 36, 36);
 	drawtorus(Mt1, mytorus);
@@ -315,13 +271,15 @@ void zebatka_inner(glm::mat4 Mt1, float angleDelta, float zw, float w)
 	//mytorus.drawSolid();
 
 	//W pętli narysuj 12 kostek.
-	for (int k = 0; k < 24; k++) {
+	int limit = int(PI * a * zw / 0.2);
+	float delta = angleDelta ? 360.0f/2*limit : 0.0f;
+	for (int k = 0; k < limit; k++) {
 		//Macierz kostki to obrót, żeby wybrać kierunek wokół torusa...
-		glm::mat4 Mk = glm::rotate(Mt1, glm::radians(k * 360.0f / 24.0f + angleDelta), glm::vec3(0.0f, 0.0f, 1.0f));
+		glm::mat4 Mk = glm::rotate(Mt1, glm::radians(k * 360.0f / limit + delta ), glm::vec3(0.0f, 0.0f, 1.0f));
 		//...przesunięcie żeby dotrzeć na obrzeże torusa...
 		Mk = glm::translate(Mk, glm::vec3(zw + w, 0.0f, 0.0f));
 		//...i skalowanie żeby pomniejszyć kostkę do porządanych rozmiarów
-		Mk = glm::scale(Mk, glm::vec3(0.05f, 0.05f, 0.05f));
+		Mk = glm::scale(Mk, glm::vec3(0.1f / a, 0.1f / b, 0.1f / c));
 		Models::Cube mycube;
 		drawcube(Mk, mycube);
 	}
@@ -336,15 +294,42 @@ void zebatka_inner(glm::mat4 Mt1, float angleDelta, float zw, float w)
 	}
 
 }
+void glowna_zebatka(glm::mat4 M, float angle, float x, float y, float z, float angleDelta, float a, float b, float c, float zw, float w)
+//angle nie ruszac, x y z(0,0,0) - przesuniecie zebatki, angle delta(0) - rotate kostek wokol torusa, a b c(1,1,1) - skalowanie torusa,
+// zw w(0.9,0.3) - promien zewnetrzny i wewnetrzny torusa, prawolewo 
+// w nawiasach defaultowe wartosci zeby mialo sens na poczatku i potem mozna zmieniac
+{
+	Models::Torus mytorus(zw, w, 36, 36);
+	//glm::mat4 I = glm::mat4(1.0f);
+	glm::mat4 Mt1 = glm::translate(M, glm::vec3(x, y, z)); //Macierz torusa to najpierw przesunięcie do odpowiedniej pozycji... + Relatywnie do macierzy M żeby się rotowało wokół osi x i y
+	Mt1 = glm::rotate(Mt1, angle, glm::vec3(0.0f, 0.0f, 1.0f)); //... potem obrót żeby nasz "tryb" był odpowiednio obrócony
+	Mt1 = glm::scale(Mt1, glm::vec3(a, b, c));
+	drawtorus(Mt1, mytorus);
+
+	zebatka_inner(Mt1, angleDelta, zw, w, a, b, c);
+
+	//kijek od zebatki
+	glm::mat4 Mk = glm::translate(Mt1, glm::vec3(0.0f, 0.0f, -0.3f));
+	Mk = glm::scale(Mk, glm::vec3(0.2f, 0.2f, 0.6f));
+	Models::Cube mycube;
+	drawcube(Mk, mycube);
+	// krótsza wskazówka zegara
+	glm::mat4 Mk2 = glm::translate(Mt1, glm::vec3(0.0f, 0.8f, -0.5f));
+	Mk2 = glm::scale(Mk2, glm::vec3(0.15f, 2.2f, 0.15f));
+	Models::Cube mycube1;
+	draw_wood_cube(Mk2, mycube1);
+}
+
+
 
 void gorna_zebatka(glm::mat4 M, float angle, float x, float y, float z, float angleDelta, float a, float b, float c, float zw, float w)
 {
 	//przednia gorna zebatka
 	Models::Torus mytorus(zw, w, 36, 36);
 	glm::mat4 Mt1 = glm::translate(M, glm::vec3(x, y, z)); //Macierz torusa to najpierw przesunięcie do odpowiedniej pozycji... + Relatywnie do macierzy M żeby się rotowało wokół osi x i y
-	Mt1 = glm::rotate(Mt1, angle * 1.5f, glm::vec3(0.0f, 0.0f, 1.0f)); //... potem obrót żeby nasz "tryb" był odpowiednio obrócony
-	Mt1 = glm::scale(Mt1, glm::vec3(a, b, c));
-	zebatka_inner(Mt1, angleDelta, zw, w);
+	Mt1 = glm::rotate(Mt1, angle, glm::vec3(0.0f, 0.0f, 1.0f)); //... potem obrót żeby nasz "tryb" był odpowiednio obrócony
+	Mt1 = glm::scale(Mt1, glm::vec3(1.2*a, 1.2*b, 1.2*c));
+	zebatka_inner(Mt1, 1, zw, w,1.2*a,1.2*b,1.2*c);
 	//kijek od zebatki
 	glm::mat4 Mk = glm::rotate(Mt1, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	Mk = glm::translate(Mk, glm::vec3(-2.5f, 0.0f, 0.0f));
@@ -353,14 +338,14 @@ void gorna_zebatka(glm::mat4 M, float angle, float x, float y, float z, float an
 	drawcube(Mk, mycube);
 	//tylnia gorna zebatka
 	glm::mat4 Mt2 = glm::translate(M, glm::vec3(x, y, 6.25)); //Macierz torusa to najpierw przesunięcie do odpowiedniej pozycji... + Relatywnie do macierzy M żeby się rotowało wokół osi x i y
-	Mt2 = glm::rotate(Mt2, angle * 1.5f, glm::vec3(0.0f, 0.0f, 1.0f)); //... potem obrót żeby nasz "tryb" był odpowiednio obrócony
+	Mt2 = glm::rotate(Mt2, angle, glm::vec3(0.0f, 0.0f, 1.0f)); //... potem obrót żeby nasz "tryb" był odpowiednio obrócony
 	Mt2 = glm::scale(Mt2, glm::vec3(2.2 * a, 2.2 * b, 2.2 * c));
-	zebatka_inner(Mt2, angleDelta, zw, w);
+	zebatka_inner(Mt2, 0, zw, w,2.2*a,2.2*b,2.2*c);
 	//tylnia dolna zebatka
 	glm::mat4 Mt3 = glm::translate(M, glm::vec3(x, 0, 6.25)); //Macierz torusa to najpierw przesunięcie do odpowiedniej pozycji... + Relatywnie do macierzy M żeby się rotowało wokół osi x i y
-	Mt3 = glm::rotate(Mt3, -1.5f * angle, glm::vec3(0.0f, 0.0f, 1.0f)); //... potem obrót żeby nasz "tryb" był odpowiednio obrócony
-	Mt3 = glm::scale(Mt3, glm::vec3(1.4 * a, 1.4 * b, 1.4 * c));
-	zebatka_inner(Mt3, angleDelta, zw, w);
+	Mt3 = glm::rotate(Mt3, -angle, glm::vec3(0.0f, 0.0f, 1.0f)); //... potem obrót żeby nasz "tryb" był odpowiednio obrócony
+	Mt3 = glm::scale(Mt3, glm::vec3(1.8 * a, 1.8 * b, 1.8 * c));
+	zebatka_inner(Mt3, 1, zw, w,1.8*a, 1.8 *b, 1.8*c);
 	//kijek
 	glm::mat4 Mk2 = glm::translate(Mt3, glm::vec3(0.0f, 0.0f, -2.2f));
 	Mk2 = glm::scale(Mk2, glm::vec3(0.06f, 0.06f, 2.2f));
@@ -418,25 +403,31 @@ void drawPendulum(glm::mat4 M, float angle2)
 void drawScene(GLFWwindow* window, float angle_x, float angle_y, float pendulum_angle, float angle) {
 	//************Tutaj umieszczaj kod rysujący obraz******************l
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+	
 	glm::mat4 M = glm::mat4(1.0f); //Zainicjuj macierz modelu macierzą jednostkową
 	////////////////////////////////////////////////////////////////////////
 
 	glm::mat4 P = glm::perspective(glm::radians(50.0f), 1.0f, 1.0f, 50.0f); //Wyliczenie macierzy rzutowania
-	glm::mat4 V = glm::lookAt(glm::vec3(0.0f, 0.0f, -30.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	glm::mat4 V = glm::lookAt(glm::vec3(0.0f, 0.0f, -25.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
-	M = glm::translate(M, glm::vec3(-4.0, 0, 0));
+	
 	M = glm::rotate(M, angle_y, glm::vec3(1.0f, 0.0f, 0.0f)); //rotacja wokół osi y
 	M = glm::rotate(M, angle_x, glm::vec3(0.0f, 1.0f, 0.0f)); //rotacja wokół osi y
+	M = glm::translate(M, glm::vec3(-4.0, 0, 0));
     sp->use();//Aktywacja programu cieniującego
     //Przeslij parametry programu cieniującego do karty graficznej
     glUniformMatrix4fv(sp->u("P"),1,false,glm::value_ptr(P));
     glUniformMatrix4fv(sp->u("V"),1,false,glm::value_ptr(V));
 
 	drawPendulum(M, pendulum_angle); // rysowanie wahadła
-	zebatka(M, angle, 4.5, 0, 0, 0, 1.5, 1.5, 1.5, 1.2, 0.1);
-	glowna_zebatka(M, -angle, 9.3, 0, 0, 15.0, 1.5, 1.5, 1.5, 1.7, 0.1);
-	gorna_zebatka(M, angle, 9.3, 3.90, 0.0, 15.0, 1.5, 1.5, 1.5, 0.6, 0.05);
+	zebatka(M, angle/20, 4.5, 0, 0, 0, 1.5, 1.5, 1.5, 1.2, 0.1);
+	glowna_zebatka(M, -angle/3600, 9.3, 0, 0, 15.0, 1.5, 1.5, 1.5, 1.7, 0.1);
+	gorna_zebatka(M, angle/30, 9.3, 3.90, 0.0, 15.0, 1.5, 1.5, 1.5, 0.6, 0.05);
+	//Testowanie żródeł światła na kostce 7x7
+	//glm:: mat4 Mk2 = glm::translate(M, glm::vec3(4, 0, 0)); 
+	//Mk2 = glm::scale(Mk2, glm::vec3(7.0f, 7.0f, 7.0f));
+	//Models::Cube mycube1;
+	//draw_wood_cube(Mk2, mycube1);
 
     glfwSwapBuffers(window); //Przerzuć tylny bufor na przedni
 }
@@ -453,7 +444,7 @@ int main(void)
 		exit(EXIT_FAILURE);
 	}
 
-	window = glfwCreateWindow(500, 500, "OpenGL", NULL, NULL);  //Utwórz okno 500x500 o tytule "OpenGL" i kontekst OpenGL.
+	window = glfwCreateWindow(800, 800, "OpenGL", NULL, NULL);  //Utwórz okno 500x500 o tytule "OpenGL" i kontekst OpenGL.
 
 	if (!window) //Jeżeli okna nie udało się utworzyć, to zamknij program
 	{
@@ -483,7 +474,7 @@ int main(void)
 	//Główna pętla
 	while (!glfwWindowShouldClose(window)) //Tak długo jak okno nie powinno zostać zamknięte
 	{
-		angle += -PI / 2.5 * glfwGetTime(); //Oblicz przyrost kąta po obrocie
+		angle += -PI * glfwGetTime(); //Oblicz przyrost kąta po obrocie
 
 		angle_x += speed_x * glfwGetTime(); //Add angle by which the object was rotated in the previous iteration
 		angle_y += speed_y * glfwGetTime(); //Add angle by which the object was rotated in the previous iteration
